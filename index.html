@@ -1160,6 +1160,7 @@ function addPaire(){
 
 let editingRecordId = null;
 let pendingEditId = null;
+let pendingDeleteId = null;
 
 function resetForm(){
   document.querySelectorAll('.sheet input[type=text], .sheet textarea').forEach(el=>el.value='');
@@ -1411,8 +1412,16 @@ function renderHistorique(){
         btn.textContent = '✎ Modifier';
         btn.onclick = ()=>requestEditRecord(rec.id);
 
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '🗑 Supprimer';
+        delBtn.style.marginLeft = '6px';
+        delBtn.style.background = '#c0392b';
+        delBtn.style.color = '#fff';
+        delBtn.onclick = ()=>requestDeleteRecord(rec.id);
+
         card.appendChild(info);
         card.appendChild(btn);
+        card.appendChild(delBtn);
         cardsWrap.appendChild(card);
       });
 
@@ -1439,15 +1448,45 @@ function requestEditRecord(id){
 function closePinModal(){
   document.getElementById('pinModalOverlay').style.display = 'none';
   pendingEditId = null;
+  pendingDeleteId = null;
 }
 
 function submitPin(){
   const val = document.getElementById('pinInput').value;
   if(val !== '2112'){ alert('Code PIN incorrect. / رمز سري غير صحيح.'); return; }
   document.getElementById('pinModalOverlay').style.display = 'none';
+  if(pendingDeleteId){
+    doDeleteRecord(pendingDeleteId);
+    pendingDeleteId = null;
+    return;
+  }
   const rec = (data.historique || []).find(r=>r.id === pendingEditId);
   pendingEditId = null;
   if(rec) loadRecordIntoForm(rec);
+}
+
+function requestDeleteRecord(id){
+  const rec = (data.historique || []).find(r=>r.id === id);
+  if(!rec) return;
+  const ageMs = Date.now() - (rec.createdAt || 0);
+  if(ageMs < 60000){
+    // Moins d'1 minute depuis la création : suppression libre, sans PIN
+    doDeleteRecord(id);
+  } else {
+    // Plus d'1 minute : PIN requis
+    pendingDeleteId = id;
+    pendingEditId = null;
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinModalOverlay').style.display = 'flex';
+  }
+}
+
+function doDeleteRecord(id){
+  if(!confirm('Confirmer la suppression de cette fiche ? / تأكيد حذف هذه الوثيقة؟')) return;
+  data.historique = (data.historique || []).filter(r=>r.id !== id);
+  saveData();
+  renderHistorique();
+  showStatus('Fiche supprimée');
 }
 
 function loadRecordIntoForm(rec){
@@ -1476,6 +1515,8 @@ window.closeConfirmModal = closeConfirmModal;
 window.confirmValidation = confirmValidation;
 window.closePinModal = closePinModal;
 window.submitPin = submitPin;
+window.requestDeleteRecord = requestDeleteRecord;
+window.doDeleteRecord = doDeleteRecord;
 
 loadData();
 document.getElementById('inputDate').valueAsDate = new Date();

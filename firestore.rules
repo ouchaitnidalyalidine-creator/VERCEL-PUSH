@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // L'application stocke tout dans un seul document :
+    // collection "fiche-intervention" / document "gestion-data"
+    match /fiche-intervention/gestion-data {
+      allow read, write: if true;
+      // ⚠️ Ouvert à tous ceux qui ont l'URL Firestore (normal pour un outil interne
+      // avec le lien non partagé publiquement). Si tu veux le restreindre :
+      //   1) Active Firebase Authentication (ex: connexion anonyme ou email/mdp)
+      //   2) Remplace la ligne ci-dessus par :
+      //        allow read, write: if request.auth != null;
+      //   3) Ajoute la connexion (signInAnonymously ou signInWithEmailAndPassword)
+      //      dans le script du fichier index.html avant les appels Firestore.
+    }
+
+    // Bloque tout le reste par défaut
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
